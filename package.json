@@ -1,0 +1,53 @@
+{
+  "name": "baidu-enhanced-desktop",
+  "version": "1.0.0",
+  "description": "一个基于 Electron 和 Vue 3 构建的百度增强桌面客户端。",
+  "main": "src/main/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && electron-builder",
+    "start": "cross-env NODE_ENV=development electron ."
+  },
+  "author": "Gemini",
+  "license": "MIT",
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.1.8",
+    "element-plus": "^2.7.3",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.27",
+    "vue-router": "^4.3.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "cross-env": "^7.0.3",
+    "electron": "^30.0.1",
+    "electron-builder": "^24.13.3",
+    "vite": "^5.2.11"
+  },
+  "build": {
+    "appId": "com.gemini.baidu-enhanced-desktop",
+    "productName": "百度增强桌面版",
+    "files": [
+      "dist/renderer/**/*",
+      "src/main/**/*",
+      "src/preload/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist/build"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
