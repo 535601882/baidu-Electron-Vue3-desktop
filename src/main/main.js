@@ -2,6 +2,17 @@ const { app, BrowserWindow, BrowserView, shell, ipcMain, globalShortcut, Tray, M
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const Store = require('electron-store');
+const log = require('electron-log'); // 引入日志记录
+
+// --- 自动更新配置 ---
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'info';
+log.info('App starting...');
+
+// 开发模式下，强制指向本地的更新描述文件
+if (process.env.NODE_ENV === 'development') {
+  autoUpdater.updateConfigPath = path.join(__dirname, 'dev-app-update.yml');
+}
 
 let mainWindow;
 let view;
@@ -156,11 +167,62 @@ function createWindow() {
   ipcMain.handle('store-set', (event, key, value) => {
     store.set(key, value);
   });
+
+  // --- 自动更新相关IPC ---
+  // 监听渲染进程的检查更新请求
+  ipcMain.on('check-for-update', () => {
+    log.info('收到渲染进程的检查更新请求');
+    autoUpdater.checkForUpdates();
+  });
+
+  // 监听渲染进程的立即安装请求
+  ipcMain.on('install-update', () => {
+    log.info('收到渲染进程的立即安装请求');
+    autoUpdater.quitAndInstall();
+  });
 }
+
+// --- 自动更新事件监听 ---
+autoUpdater.on('checking-for-update', () => {
+  log.info('正在检查更新...');
+  mainWindow.webContents.send('update-status', { status: 'checking' });
+});
+
+autoUpdater.on('update-available', (info) => {
+  log.info('发现新版本:', info);
+  mainWindow.webContents.send('update-status', { status: 'available', info });
+});
+
+autoUpdater.on('update-not-available', (info) => {
+  log.info('当前已是最新版本:', info);
+  mainWindow.webContents.send('update-status', { status: 'not-available' });
+});
+
+autoUpdater.on('error', (err) => {
+  log.error('更新出错:', err);
+  mainWindow.webContents.send('update-status', { status: 'error', error: err.message });
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  log.info(`下载进度: ${progressObj.percent}%`);
+  mainWindow.webContents.send('update-status', { status: 'downloading', progress: progressObj });
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  log.info('新版本下载完成:', info);
+  mainWindow.webContents.send('update-status', { status: 'downloaded' });
+});
+
 
 // Electron应用准备就绪后执行
 app.whenReady().then(() => {
   createWindow();
+
+  // 延迟检查更新，给窗口一点时间加载
+  setTimeout(() => {
+    log.info('应用启动，开始自动检查更新...');
+    autoUpdater.checkForUpdates();
+  }, 5000);
 
   // 注册全局快捷键 Ctrl+Alt+B
   globalShortcut.register('CommandOrControl+Alt+B', () => {
@@ -196,6 +258,7 @@ app.whenReady().then(() => {
         }
       },
     },
+    { label: '检查更新', click: () => autoUpdater.checkForUpdates() },
     { label: '退出', click: () => app.quit() },
   ]);
   tray.setToolTip('百度增强桌面版');
@@ -233,11 +296,6 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
-
-  // 检查更新 (仅在生产模式下)
-  if (app.isPackaged) {
-    autoUpdater.checkForUpdatesAndNotify();
-  }
 });
 
 // 当所有窗口都关闭时退出应用

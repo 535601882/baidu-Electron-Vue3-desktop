@@ -40,7 +40,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useHistoryStore } from '../stores/historyStore.js'
 import { useBookmarkStore } from '../stores/bookmarkStore.js'
 import { Close } from '@element-plus/icons-vue'
@@ -67,12 +67,18 @@ const toggleDarkMode = (value) => {
   window.electronAPI.toggleDarkMode(value)
 }
 
+const handleAddHistory = (item) => {
+  historyStore.addHistory(item);
+};
+
 // 监听从主进程发送过来的历史记录更新事件
 onMounted(() => {
-  window.electronAPI.onAddHistory((item) => {
-    historyStore.addHistory(item)
-  })
-})
+  window.electronAPI.on('add-history', handleAddHistory);
+});
+
+onUnmounted(() => {
+  window.electronAPI.removeListener('add-history', handleAddHistory);
+});
 </script>
 
 <style scoped>
